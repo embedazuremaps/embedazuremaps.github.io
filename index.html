@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0">
+  <title>Free Azure Maps Generator - Azure Maps API</title>
+  <meta name="description"
+    content="Add a Azure Map location to your site in just a few clicks. Generate code for Azure Maps absolutely free." />
+  <meta name="google-site-verification" content="XmcuLICdS0CQ4bETu6OB64thP05teFiR5TN5ZzuDyOQ" />
+  <meta name="msvalidate.01" content="24F7A516EE8BA1C5B3AAE5422B62908B" />
+  <meta property="og:type" content="website" />
+  <meta property="og:title" content="Free Azure Maps Code Generator" />
+  <meta property="og:description"
+    content="Free Azure Maps Code Generator. Azure Maps iframe Generator. Embed Azure Maps HTML. Azure Maps for Website with two clicks. Type in your Title & Address, copy the HTML-Code. Paste the Code to your Website." />
+  <meta name="keywords" content="generator,azure,embed,maps" />
+  <meta property="og:url" content="https://embedazurecode.github.io/" />
+  <meta property="og:site_name" content="Free Azure Maps Code Generator" />
+  <meta property="og:image" content="https://embedazurecode.github.io/free-azure-maps-code-generator.png" />
+  <meta property="og:image:secure_url" content="https://embedazurecode.github.io/free-azure-maps-code-generator.png" />
+  <meta name="twitter:card" content="summary" />
+  <meta name="twitter:site" content="@freeazuremapscodegenerator" />
+  <meta name="twitter:domain" content="https://embedazurecode.github.io/" />
+  <meta name="twitter:title" content="Free Azure Maps Code Generator" />
+  <meta name="twitter:description"
+    content="Free Azure Maps Code Generator. Azure Maps iframe Generator. Embed Azure Maps HTML. Azure Maps for Website with two clicks. Type in your Title & Address, copy the HTML-Code. Paste the Code to your Website." />
+  <meta name="twitter:image" content="https://embedazurecod.github.io/free-azure-maps-code-generator.png" />
+
+  <link rel="canonical" href="https://embedazurecode.github.io/" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/normalize/5.0.0/normalize.min.css">
+  <link rel='stylesheet' href='https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/css/materialize.min.css'>
+  <link rel='stylesheet'
+    href='https://cdnjs.cloudflare.com/ajax/libs/material-design-iconic-font/2.2.0/css/material-design-iconic-font.min.css'>
+  <link rel='stylesheet' href='https://fonts.googleapis.com/icon?family=Material+Icons'>
+
+  <link href="https://atlas.microsoft.com/sdk/javascript/mapcontrol/2/atlas.min.css" rel="stylesheet" />
+  <script src="https://atlas.microsoft.com/sdk/javascript/mapcontrol/2/atlas.min.js"></script>
+
+  <script src="https://atlas.microsoft.com/sdk/javascript/service/2/atlas-service.min.js"></script>
+
+  <script>
+    var map, searchURL, datasource, client, popup, searchInput, resultsPanel, searchInputLength, centerMapOnResults, point;
+
+    var minSearchInputLength = 3;
+
+    var keyStrokeDelay = 150;
+
+    function GetMap() {
+      map = new atlas.Map('myMap', {
+        center: [-122.449921,37.775372],
+        zoom: 13,
+        view: 'Auto',
+
+        authOptions: {
+          authType: 'subscriptionKey',
+          subscriptionKey: '35t-hsAMcragzjbqAFxSo9aeyAPLqneR-hYrhkE1iEg'
+        }
+      });
+
+      
+      searchInput = document.getElementById("s");
+      searchInput.addEventListener("keyup", searchInputKeyup);
+
+      popup = new atlas.Popup();
+
+      var pipeline = atlas.service.MapsURL.newPipeline(new atlas.service.MapControlCredential(map));
+
+      searchURL = new atlas.service.SearchURL(pipeline);
+
+      map.events.add('ready', function () {
+        map.controls.add(new atlas.control.ZoomControl(), {
+          position: 'bottom-right'
+        });
+        map.controls.add(new atlas.control.StyleControl({
+          mapStyles: ['road', 'satellite']
+
+        }), {
+          position: 'bottom-left'
+        });
+
+        datasource = new atlas.source.DataSource();
+        map.sources.add(datasource);
+        point = new atlas.Shape(new atlas.data.Point([-122.449921,37.775372]));
+
+        map.getCanvasContainer().style.cursor = 'pointer';
+
+        datasource.add([point]);
+
+        popup = new atlas.Popup({
+          position: [0, 0]
+        });
+
+        map.events.add('click', mapClicked);
+
+        var searchLayer = new atlas.layer.SymbolLayer(datasource, null, {
+          iconOptions: {
+            image: 'pin-round-darkblue',
+            anchor: 'center',
+            allowOverlap: true
+          }
+        });
+        map.layers.add(searchLayer);
+
+      });
+    }
+
+    function mapClicked(e) {
+      point.setCoordinates(e.position);
+      searchURL.searchAddressReverse(atlas.service.Aborter.timeout(3000), e.position, {
+        view: 'Auto'
+      }).then(results => {
+        var data = results.geojson.getFeatures();
+
+        var content = '<div style="padding:1rem;font-size:1rem">';
+
+        if (data.features.length > 0 && data.features[0].properties && data.features[0].properties.address && data.features[0].properties.address.freeformAddress) {
+          content += data.features[0].properties.address.freeformAddress;
+          content += `<div>${data.features[0].geometry.coordinates}</div>`;
+        } else {
+          content += 'No address for that location!';
+        }
+
+        content += '</div>';
+
+        popup.setOptions({
+          position: e.position,
+          content: content,
+          pixelOffset: [0, -35],
+        });
+
+        popup.open(map);
+      });
+    }
+    function searchInputKeyup(e) {
+      centerMapOnResults = true;
+      if (searchInput.value.length >= minSearchInputLength) {
+        if (e.keyCode === 13) {
+          centerMapOnResults = false;
+        }
+        setTimeout(function () {
+          if (searchInputLength == searchInput.value.length) {
+            search();
+          }
+        }, keyStrokeDelay);
+      }
+      searchInputLength = searchInput.value.length;
+    }
+    function search() {
+      datasource.clear();
+      popup.close();
+
+      var pipeline = atlas.service.MapsURL.newPipeline(new atlas.service.MapControlCredential(map));
+
+      var searchURL = new atlas.service.SearchURL(pipeline);
+
+      var query = document.getElementById("s").value;
+      searchURL.searchPOI(atlas.service.Aborter.timeout(10000), query, {
+        lon: map.getCamera().center[0],
+        lat: map.getCamera().center[1],
+        maxFuzzyLevel: 4,
+        view: 'Auto'
+      }).then((results) => {
+
+        var data = results.geojson.getFeatures();
+        datasource.add(data.features[0]);
+
+        if (centerMapOnResults) {
+          map.setCamera({
+            bounds: data.bbox,
+            zoom:14,
+          });
+        }
+      });
+    }
+
+    function setMapStyle(elm) {
+      if (elm.checked) {
+        map.setStyle({ style: 'satellite' });
+      } else {
+        map.setStyle({ style: 'road' });
+      }
+    }
+    function setMapZoom(elm) {
+      map.setCamera({ zoom: elm.value })
+    }
+  </script>
+  <style>
+    #formap {
+      overflow: hidden;
+      transition: all 0.5s;
+      width: 600px;
+      height: 400px;
+      margin: 1rem auto;
+    }
+
+    @media screen and (max-width:600px) {
+      #formap {
+        max-width: 100%;
+      }
+    }
+
+    i.material-icons {
+      vertical-align: middle;
+    }
+
+    form {
+      padding-top: 2rem;
+    }
+
+    #gmapcode {
+      height: 7em;
+    }
+  </style>
+
+</head>
+
+<body onload="GetMap()">
+  <header class="indigo darken-4 white-text">
+    <div class="container">
+      <div class="row">
+        <div class="col">
+          <h1 class="center-align">Azure Maps Code Generator</h1>
+        </div>
+      </div>
+    </div>
+    <nav class="indigo">
+      <div class="container">
+        <div class="nav-wrapper">
+          <div class="col s12">
+            <!--
+              <a href="#" class="brand-logo">G</a>
+              <a href="#" data-target="mobile-demo" class="sidenav-trigger"><i class="material-icons">menu</i></a>
+              <ul class="right hide-on-med-and-down">
+              -->
+            <ul class="left">
+              <li>
+                <a href="#generator">Generator</a>
+              </li>
+              <li>
+                <a href="#sponsors">Sponsors</a>
+              </li>
+              <li>
+                <a href="#about">About</a>
+              </li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </nav>
+  </header>
+  <main>
+    <div class="container">
+      <form action="#" id="generator" class="scrollspy">
+        <div class="row card-panel">
+          <div class="col s11 m8">
+            <div class="input-field">
+              <i class="material-icons  prefix">search</i>
+              <input type="text" name="s" id="s" value="university of san francisco" placeholder="Enter Adress"
+                data-role="none">
+              <label for="s">Enter your Address:</label>
+            </div>
+          </div>
+          <div class="col s12 m4">
+            <div class="input-field center-align">
+              <button id="h" data-target="modal1" class="btn btn-large  modal-trigger">Get HTML-Code</button>
+            </div>
+          </div>
+        </div>
+        <div class="row card-panel">
+          <div class="col s3">
+            <h6>Satellite </h6>
+            <div class="input-field">
+              <div class="switch">
+                <label>
+                  Off
+                  <input type="checkbox" onclick="setMapStyle(this)" id="ic" name="ic">
+                  <span class="lever"></span>
+                  On
+                </label>
+              </div>
+            </div>
+          </div>
+          <div class="col s3">
+            <h6 class="mapz">Map Zoom </h6>
+            <div class="input-field">
+              <p class="range-field">
+                <input id="zoom" onchange="setMapZoom(this)" type="range" min="1" max="20" step="1" value="13">
+              </p>
+            </div>
+          </div>
+          <div class="col s3">
+            <h6>Width (px): </h6>
+            <p class="range-field">
+              <input type="range" name="width" id="width" min="240" max="1080" step="10" value="600" placeholder=""
+                class="numeric">
+            </p>
+          </div>
+          <div class="col s3">
+            <h6>Height (px):</h6>
+            <p class="range-field">
+              <input type="range" name="height" id="height" min="240" max="1080" step="10" value="400" placeholder=""
+                class="numeric">
+            </p>
+          </div>
+        </div>
+      </form>
+    </div>
+    <div class="row">
+      <div class="col s12">
+        <div id="myMap" style="position:relative;width:600px;height:400px;margin: 0 auto"></div>
+        <div id="modal1" class="modal">
+          <div class="modal-content">
+            <h4>Code</h4>
+            <p>Copy & Paste this Azure-Maps-Code to your Website:</p>
+            <textarea id="gmapcode" rows="5">
+
+              </textarea>
+          </div>
+          <div class="modal-footer">
+            <a href="#!" class="modal-close waves-effect waves-green btn-flat">Close</a>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="container">
+      <div class="row scrollspy" id="about">
+        <div class="col s12 card-panel">
+          <h3>About</h3>
+          <p>Azure Maps is the most popular online mapping service with interactive zooming and panning, directions,
+            location details, satellite views.
+            You can include a Azure Map on your site that includes a pin dropped at the address of a location. This is
+            useful for your own business, but can also be used by bloggers, reviewers, and other websites that discuss
+            specific establishments. </p>
+          <p>
+          <h2>How do I create a custom Azure Map?</h2>
+          <p>Azure Maps is a wonderful tool to use when you need to map out a location. However, sometimes you want to
+            customize your map and add additional elements such as text, graphics, and other features. Azure Maps will
+            not let users customize the map directly unless they create their own code.</p>
+          <h2>How to generate custom code for Azure Maps</h2>
+          <p>There are many ways to generate custom code for Azure Maps. One way involves downloading the code from the
+            developer website and then uploading it into your webpage's source code. Another way is through an advanced
+            Azure Map generator that allows you to customize every aspect of the map through a simple interface.</p>
+          <h2>What is Azure Maps API?</h2>
+          <p>The Azure Maps API offers a number of benefits that are not available on other mapping APIs. It has more
+            data points than some other services, more information about street level detail coverage, more accurate
+            calculations for distance and travel time between two points in the world. This makes it ideal for location
+            based services or applications that require mapping functionality.</p>
+          <h2>What is Azure Maps?</h2>
+          <p>Azure Maps is a mapping service that offers directions to users of Android, iOS, BlackBerry OS, Windows
+            Phone, Windows 10 Mobile.
+            Azure Maps has many uses for both personal and business use. It can be used to get directions from one place
+            to another, look for places on the map or find out what business are around you.</p>
+        </div>
+      </div>
+    </div>
+  </main>
+  <footer class="page-footer grey darken-4 white-text">
+    <div class="container">
+      <div class="row" style="margin-bottom: 0;">
+        <div class="col s12">
+        </div>
+      </div>
+    </div>
+    <div class="footer-copyright">
+      <div class="container">
+        &copy; 2022 embedazurecode.github.io
+      </div>
+    </div>
+    </div>
+  </footer>
+
+  <script src='https://cdnjs.cloudflare.com/ajax/libs/jquery/3.4.1/jquery.min.js'></script>
+  <script src='https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/js/materialize.min.js'></script>
+  <script>
+    (function ($) {
+      $("#width,#height").on("change", function () {
+        let width = $('#width').val();
+
+        if (window.innerWidth < width) {
+          width = window.innerWidth - 21;
+        }
+
+        $("#myMap").css({
+          'width': width + 'px',
+          'height': $('#height').val() + 'px'
+        });
+        $(".mapboxgl-canvas").css({
+          'width': width + 'px',
+          'height': $('#height').val() + 'px'
+        });
+      })
+
+      $('#h').click(() => {
+        search()
+        var zoom = $('#zoom').val();
+        var height = $('#height').val() + 'px'
+        var width = $('#width').val() + 'px'
+        var coordinates = map.getCamera().center;
+        var html = `<link href="https://atlas.microsoft.com/sdk/javascript/mapcontrol/2/atlas.min.css" rel="stylesheet" /> 
+<script src="https://atlas.microsoft.com/sdk/javascript/mapcontrol/2/atlas.min.js"></\script>
+<script src="https://atlas.microsoft.com/sdk/javascript/service/2/atlas-service.min.js"></\script>
+<script>
+var map;
+function GetMap() {
+              //Initialize a map instance.
+            map = new atlas.Map('myMap', {
+                center: [${coordinates}],
+                zoom: ${zoom},
+                view: 'Auto',
+
+                //Add authentication details for connecting to Azure Maps.
+                authOptions: {
+                    authType: 'subscriptionKey',
+                    subscriptionKey: '35t-hsAMcragzjbqAFxSo9aeyAPLqneR-hYrhkE1iEg'
+                }
+            });
+          }
+</\script>
+<body onload="GetMap()">
+  <div id="myMap" style="position:relative;width:${width};min-width:290px;height:${height};"></div>
+  <a href="https://ivatech.dev" style="display:none;">web development</a>
+</body>
+`
+        $('#gmapcode').text(html)
+      })
+
+      $('select').formSelect();
+      $('.modal').modal();
+      $('.scrollspy').scrollSpy();
+
+    })(jQuery)
+  </script>
+
+</body>
+
+</html>
